@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>URL Monitor</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+            text-align: center; /* Center-align text */
+        }
+        #urlInput {
+            padding: 10px;
+            margin-right: 10px;
+            width: 300px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #008cba;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #005f73;
+        }
+        #statusContainer {
+            margin-top: 20px;
+            text-align: left; /* Align the grid to the left */
+            display: inline-block;
+            width: 100%;
+        }
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(15, 1fr); /* 15 cells for the grid */
+            gap: 2px;
+            margin-top: 10px;
+            max-width: 100%;
+        }
+        .grid-cell {
+            width: 100%;
+            height: 20px;
+            background-color: #ddd;
+        }
+        .green {
+            background-color: #4CAF50;
+        }
+        .red {
+            background-color: #f44336;
+        }
+        .url-status-wrapper {
+            margin-bottom: 10px;
+        }
+        .url-status-title {
+            text-align: left;
+            margin-left: 10px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1 style="margin-top: 50px;">URL Monitor</h1>
+    <input type="text" id="urlInput" placeholder="Enter URL to monitor">
+    <button onclick="addUrl()">Add URL</button>
+    <div id="statusContainer"></div>
+
+    <script>
+        const statusHistory = {};
+    
+        function addUrl() {
+            const urlInput = document.getElementById('urlInput');
+            const url = urlInput.value.trim();
+            if (url && !statusHistory[url]) { // Prevent adding duplicate URLs
+                const encodedUrl = encodeURIComponent(url); // Only encode once here
+                statusHistory[encodedUrl] = []; // Use the encoded URL as the key
+                createStatusGrid(encodedUrl); // Pass encoded URL for ID consistency
+                urlInput.value = ''; // Clear input after adding URL
+                pingUrl(encodedUrl); // Pass encoded URL to start pinging
+            }
+        }
+   
+
+        function startMonitoringStatus(encodedUrl) {
+            setInterval(() => {
+                fetchStatusAndUpdate(encodedUrl);
+            }, 10000); // Currently ten seconds
+        }
+ 
+        function createStatusGrid(encodedUrl) {
+            const statusContainer = document.getElementById('statusContainer');
+            const wrapper = document.createElement('div');
+            wrapper.className = 'url-status-wrapper';
+            wrapper.id = 'wrapper-' + encodedUrl; // Use the encoded URL for element ID
+    
+            const title = document.createElement('div');
+            title.className = 'url-status-title';
+            title.textContent = decodeURIComponent(encodedUrl); // Decode for display
+            wrapper.appendChild(title);
+    
+            const grid = document.createElement('div'); // Added missing grid logic
+            grid.className = 'status-grid';
+            for (let i = 0; i < 15; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'grid-cell';
+                grid.appendChild(cell);
+            }
+            wrapper.appendChild(grid);
+            statusContainer.appendChild(wrapper);
+        }
+   
+
+        function updateStatus(encodedUrl, history) {
+            const wrapperId = 'wrapper-' + encodedUrl;
+            const wrapper = document.getElementById(wrapperId);
+            if (wrapper) {
+                const cells = wrapper.querySelectorAll('.grid-cell');
+                cells.forEach((cell, index) => {
+                    if (index < history.length) {
+                        cell.className = 'grid-cell ' + (history[index] === 'green' ? 'green' : 'red');
+                    } else {
+                        cell.className = 'grid-cell';
+                    }
+                });
+            } else {
+                console.error('No element found for wrapper', wrapperId);
+            }
+        }
+        
+        function fetchStatusAndUpdate(encodedUrl) {
+            console.log(`Fetching status for URL: ${encodedUrl}`);
+            // Directly use encodedUrl without additional encoding
+            fetch(`/status/?url=${encodedUrl}`)
+                .then(response => response.json())
+                .then(data => {
+                    console.log(`Received data: `, data);
+                    updateStatus(encodedUrl, data.history);
+                })
+                .catch(error => console.error('Error fetching status:', error));
+        }        
+        function pingUrl(encodedUrl) {
+            console.log(`Attempting to add URL: ${encodedUrl}`);
+            fetch('/add_url', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                // Send JSON data
+                body: JSON.stringify({ url: decodeURIComponent(encodedUrl) })
+            }).then(response => response.json())
+              .then(data => {
+                  console.log(data);
+                  if (data.status === 'success') {
+                      startMonitoringStatus(encodedUrl); // Start monitoring status after adding
+                  }
+              })
+              .catch(error => console.error('Error:', error));
+        }
+    </script>
+</body>
+</html>
