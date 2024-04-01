@@ -42,3 +42,8 @@ bash
 Copy code
 uvicorn main:app --reload
 The application should now be running on http://127.0.0.1:8000. Open your web browser and navigate to this address to view the frontend and start monitoring URLs.
+
+
+Basic Look of the page:
+<img width="1728" alt="image" src="https://github.com/endelofaustin/StarSpec/assets/53027219/5c9d1d7d-09c6-4e25-913e-b82374f6359a">
+
