@@ -83,10 +83,22 @@
         }
    
 
+        let intervals = {};
+        
         function startMonitoringStatus(encodedUrl) {
-            setInterval(() => {
+            if (intervals[encodedUrl]) {
+                clearInterval(intervals[encodedUrl]); // Clear existing interval if any
+            }
+            intervals[encodedUrl] = setInterval(() => {
                 fetchStatusAndUpdate(encodedUrl);
-            }, 10000); // Currently ten seconds
+            }, 60000); // Adjust to a reasonable refresh rate, e.g., every 60 seconds
+        }
+        
+        function stopMonitoringStatus(encodedUrl) {
+            if (intervals[encodedUrl]) {
+                clearInterval(intervals[encodedUrl]);
+                delete intervals[encodedUrl];
+            }
         }
  
         function createStatusGrid(encodedUrl) {
@@ -111,11 +123,17 @@
             statusContainer.appendChild(wrapper);
         }
    
-
-        function updateStatus(encodedUrl, history) {
+        let fileCycle = {}; // Track the file cycle for each URL
+        
+        function updateStatus(encodedUrl, history, currentFileCycle) {
             const wrapperId = 'wrapper-' + encodedUrl;
             const wrapper = document.getElementById(wrapperId);
             if (wrapper) {
+                // Check if file cycle has changed
+                if (fileCycle[encodedUrl] !== undefined && fileCycle[encodedUrl] !== currentFileCycle) {
+                    clearGrid(wrapper); // Reset grid if cycle has changed
+                }
+                fileCycle[encodedUrl] = currentFileCycle; // Update current file cycle
                 const cells = wrapper.querySelectorAll('.grid-cell');
                 cells.forEach((cell, index) => {
                     if (index < history.length) {
@@ -129,17 +147,24 @@
             }
         }
         
+        function clearGrid(wrapper) {
+            const cells = wrapper.querySelectorAll('.grid-cell');
+            cells.forEach(cell => {
+                cell.className = 'grid-cell'; // Reset all cells to default
+            });
+        }
+        
         function fetchStatusAndUpdate(encodedUrl) {
             console.log(`Fetching status for URL: ${encodedUrl}`);
-            // Directly use encodedUrl without additional encoding
             fetch(`/status/?url=${encodedUrl}`)
                 .then(response => response.json())
                 .then(data => {
                     console.log(`Received data: `, data);
-                    updateStatus(encodedUrl, data.history);
+                    updateStatus(encodedUrl, data.history, data.file_counter);
                 })
                 .catch(error => console.error('Error fetching status:', error));
-        }        
+        }
+
         function pingUrl(encodedUrl) {
             console.log(`Attempting to add URL: ${encodedUrl}`);
             fetch('/add_url', {
